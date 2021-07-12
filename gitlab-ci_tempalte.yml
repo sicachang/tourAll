@@ -1,0 +1,102 @@
+image: qnib/pytest:latest
+
+variables:
+  ARTIFACTS_DIR: artifacts
+  GO_PROJECT: gitlab.com/username/projectname
+  IMAGE_TAG: sicachang/pyodbc
+  SSH_USER: sicachang
+  HUB_USER: sicachang
+  SSH_PASSWORD: 2ixidiil
+  DIST_PATH: D:\testenv
+  NEWMAN_PATH: https://www.getpostman.com/collections/dad729d39ce9efd4338e
+
+before_script:
+  - echo "before scripts"
+  
+services:
+    - name: ${HUB_USER}/pyodbc
+      entrypoint: ["python"]
+      command: ["-V"]
+
+stages:          # List of stages for jobs, and their order of execution
+  - Scan
+  - Build
+  - Testing
+  - Testing_ENV
+  - Deploy
+###---[STAGE] SCANNING---### 
+測試環境:   # This job runs in the test stage.
+  tags:
+    - win-dev
+  only:
+    - main
+    - develop
+  stage: Testing    # It only starts when the job in the build stage completes successfully
+  script: 
+    - pip install virtualenv==20.4.7 # 安裝Virtualenv (Pure Enviroment)
+    - virtualenv python # 建立 "python" 虛擬環境
+    - .\python\Scripts\activate.ps1 # 啟動 "python" 虛擬環境
+    - python -m pip install --upgrade pip -i https://pypi.douban.com/simple --no-cache-dir
+    - python -m pip install -r requirements.txt # 安裝 webAI 程式套件
+    - python ceex.py
+
+
+### [STAGE] 建置與佈署 ###  
+測試環境佈署:   # This job runs in the test stage.
+  tags:
+    - win-dev
+  only:
+    - main
+    - develop
+  stage: Testing_ENV    # It only starts when the job in the build stage completes successfully
+  script: 
+    - pip install virtualenv==20.4.7 # 安裝Virtualenv (Pure Enviroment)
+    - virtualenv python # 建立 "python" 虛擬環境
+    - .\python\Scripts\activate.ps1 # 啟動 "python" 虛擬環境
+    - python -m pip install --upgrade pip -i https://pypi.douban.com/simple --no-cache-dir
+    - python -m pip install -r requirements.txt # 安裝 webAI 程式套件
+    - pyinstaller -F ceex.py --workpath D:\testenv\ --distpath D:\testenv\ # 打包至${DIST_PATH}
+    # 複製目錄(\templates, \data, \static)
+    - Copy-Item .\data -Destination ${DIST_PATH} -Recurse -Force
+    - Copy-Item .\catchException.log -Destination ${DIST_PATH}\catchException.log -Recurse -Force
+    - Start-Process "${DIST_PATH}\ceex.exe"
+    # 啟動 webai
+
+
+### [STAGE] 功能測試 ###   
+Newman:   # This job runs in the test stage.
+  image: wojciechzurek/newman-ci
+  only:
+    - main
+  stage: Testing    # It only starts when the job in the build stage completes successfully
+  artifacts:
+    name: "$CI_PROJECT_TITLE"
+    paths:
+      - ./newman/newman
+  script: 
+    - newman run ${NEWMAN_PATH} -r html,cli,json,junit
+    
+
+UNITEST:   # This job runs in the test stage.
+  tags:
+    - win-test
+  only:
+    - main
+  stage: Testing    # It only starts when the job in the build stage completes successfully
+  script: 
+    - pip install virtualenv==20.4.7 # 安裝Virtualenv (Pure Enviroment)
+    - virtualenv python # 建立 "python" 虛擬環境
+    - .\python\Scripts\activate.ps1 # 啟動 "python" 虛擬環境
+    - pip install -r requirements.txt # 安裝 webAI 程式套件
+    - cd app
+    - python test_fun.py
+    
+### [STAGE] Deploy ###   
+Push Project-job:       # This job runs in the build stage, which runs first.
+  image: ${HUB_USER}/ubuntussh
+  stage: Deploy
+  only:
+    - main
+  script:
+    - sshpass -p 2ixidiil scp D:\test.txt sicachang@106.1.91.38:D:\test.txt -o StrictHostKeyChecking=no
+    - dir/w
