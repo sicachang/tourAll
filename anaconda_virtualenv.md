@@ -8,7 +8,7 @@ conda create --name myenv python=3.6
 pip install virtualenv
 ```
 
-# install- virtualenv
+# create- virtualenv
 ```cmd
 virtualenv mypython36
 ```
