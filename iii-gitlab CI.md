@@ -15,7 +15,7 @@
 C:\WINDOWS\>> D: # 進入　D: 目錄
 D:\>> git clone https://gitlab.com/sicachang/airportMg.git 　# 專案下載到Ｄ目錄下
 D:\>> cd airportMg # 進入剛clone後新增的資料夾 D:\airpotMg
-D:\cd airportMg\ # 已進入D:\cd airportMg\目錄
+D:\cd airportMg\>> # 已進入D:\cd airportMg\目錄
 ```
 # 複製　初始程式碼
 ```git
